@@ -101,9 +101,9 @@ public class Main extends Game {
     private void conectar() {
         try {
             // Para servidor público:
-            URI uri = new URI("wss://pico3.ieti.site");
+            //URI uri = new URI("wss://pico3.ieti.site");
             // Para probar localmente, usa esto:
-            // URI uri = new URI("ws://localhost:3000");
+            URI uri = new URI("ws://localhost:3000");
 
             socket = new WebSocketClient(uri) {
                 @Override

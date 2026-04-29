@@ -171,15 +171,35 @@ public class GameScreen implements Screen, IScreen {
     }
 
     private void dibujarJugadores(JsonValue players, float worldHeight) {
+        if (players == null) return;
+
         for (JsonValue p : players) {
             float px = p.getFloat("x") + MAP_X + P_OFF_X;
             float py = worldHeight - (p.getFloat("y") + MAP_Y + P_OFF_Y) - 32f;
 
-            TextureRegion[] frames = game.framesIdle;
+            TextureRegion[] frames = obtenerFramesJugador(p);
+
+            if (frames == null || frames.length == 0) continue;
+
             int frameIndex = (int) (tiempoAnimacion * 8) % frames.length;
 
             game.batch.draw(frames[frameIndex], px, py, 32, 32);
         }
+    }
+
+    private TextureRegion[] obtenerFramesJugador(JsonValue p) {
+        String state = p.getString("state", "IDLE");
+        boolean facingRight = p.getBoolean("facingRight", true);
+
+        if (state.equals("RUN")) {
+            return facingRight ? game.framesRight : game.framesLeft;
+        }
+
+        if (state.equals("JUMP")) {
+            return facingRight ? game.framesRight : game.framesLeft;
+        }
+
+        return game.framesIdle;
     }
 
     private void actualizarEstadoTactil() {
