@@ -5,151 +5,278 @@ import com.badlogic.gdx.Input;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
+import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.utils.JsonReader;
 import com.badlogic.gdx.utils.JsonValue;
 import com.badlogic.gdx.utils.viewport.FitViewport;
+import com.badlogic.gdx.utils.viewport.Viewport;
+
 import com.sabrinaelmeftah.OceanPark.Main;
+import com.sabrinaelmeftah.OceanPark.gametools.LevelRenderer;
 
 public class GameScreen implements Screen, IScreen {
+
     private final Main game;
+
     private OrthographicCamera camera;
     private FitViewport viewport;
+
+    private OrthographicCamera hudCamera;
+    private Viewport hudViewport;
+    private ShapeRenderer shapeRenderer;
+
     private JsonValue ultimoEstado;
     private final JsonReader lector = new JsonReader();
+
     private String lastDir = "NONE";
     private float tiempoAnimacion = 0f;
 
-    // --- COORDENADAS FINALES DE TU CALIBRACIÓN ---
+    // HUD
+    private static final float HUD_W = 480f;
+    private static final float HUD_H = 270f;
+    private static final float BTN_SIZE = 48f;
+    private static final float BTN_MARGIN = 18f;
+
+    private boolean touchLeft = false;
+    private boolean touchRight = false;
+    private boolean touchJump = false;
+    private boolean jumpWasPressed = false;
+
     private final float MAP_X = -295.0f;
     private final float MAP_Y = 673.0f;
     private final float ZOOM = 1.07f;
 
-    // Tus nuevos offsets de personaje
     private final float P_OFF_X = 137.5f;
     private final float P_OFF_Y = 195.5f;
 
     public GameScreen(Main game) {
         this.game = game;
+
         camera = new OrthographicCamera();
-        // Mantenemos la resolución de 480x270 que funcionó bien
         viewport = new FitViewport(480, 270, camera);
+
         camera.zoom = ZOOM;
+        camera.update();
+
+        hudCamera = new OrthographicCamera();
+        hudViewport = new FitViewport(HUD_W, HUD_H, hudCamera);
+        hudViewport.apply();
+        hudCamera.position.set(HUD_W / 2f, HUD_H / 2f, 0);
+        hudCamera.update();
+
+        shapeRenderer = new ShapeRenderer();
     }
 
     @Override
     public void render(float delta) {
-        // Color de fondo azul cielo original
+
         Gdx.gl.glClearColor(0.33f, 0.54f, 0.69f, 1);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
 
-        if (ultimoEstado == null || game.tileMap == null) return;
+        if (ultimoEstado == null || game.tileMap == null) {
+            procesarEntrada();
+            return;
+        }
 
         float worldHeight = game.tileMap.length * 23f;
         tiempoAnimacion += delta;
 
-        // 1. SEGUIMIENTO DE CÁMARA (Usando todos los offsets)
         JsonValue players = ultimoEstado.get("players");
-        if (players != null) {
-            for (JsonValue p : players) {
-                if (p.getString("id").equals(game.playerId)) {
-                    float tx = p.getFloat("x") + MAP_X + P_OFF_X;
-                    float ty = worldHeight - (p.getFloat("y") + MAP_Y + P_OFF_Y) - 16;
-                    camera.position.set(tx, ty, 0);
-                    camera.update();
-                    break;
-                }
-            }
-        }
 
+        actualizarCamara(players, worldHeight);
+
+        // 🔴 MUNDO
+        viewport.apply();
         game.batch.setProjectionMatrix(camera.combined);
+
         game.batch.begin();
 
-        // 2. DIBUJAR MAPA
-        com.sabrinaelmeftah.OceanPark.gametools.LevelRenderer.render(
-            game.batch, game.tilesetTexture, game.tileMap, MAP_X, MAP_Y
-        );
+        LevelRenderer.render(game.batch, game.tilesetTexture, game.tileMap, MAP_X, MAP_Y);
+        dibujarPuerta(worldHeight);
+        dibujarLlave(worldHeight);
+        dibujarJugadores(players, worldHeight);
 
-        // 2. DIBUJAR LEAF KEY
-        JsonValue keyData = ultimoEstado.get("leafKey");
-        if (keyData != null) {
-            float kx = keyData.getFloat("x") + MAP_X + P_OFF_X;
-            // Aplicamos la altura del mundo e inversión Y
-            float ky = worldHeight - (keyData.getFloat("y") + MAP_Y + P_OFF_Y) - 32f;
-
-            // Animación entre frame 0 y 1 cada 0.5 segundos
-            int frameIdx = (int)(tiempoAnimacion * 4) % 2;
-            game.batch.draw(game.leafKeyFrames[frameIdx], kx, ky, 32, 32);
-        }
-
-        // 3. DIBUJAR JUGADORES
-        if (players != null) {
-            for (JsonValue p : players) {
-                float px = p.getFloat("x") + MAP_X + P_OFF_X;
-                float py = worldHeight - (p.getFloat("y") + MAP_Y + P_OFF_Y) - 32f;
-
-                // 1. ELEGIR EL SET DE ANIMACIÓN
-                TextureRegion[] framesActuales;
-                String servidorState = p.getString("state", "IDLE"); // RUN o IDLE
-                boolean mirandoDerecha = p.getBoolean("facingRight", true);
-
-                if (servidorState.equals("RUN")) {
-                    // Si corre, elegimos Left o Right
-                    framesActuales = mirandoDerecha ? game.framesRight : game.framesLeft;
-                } else {
-                    // Si está quieto, usamos Idle
-                    framesActuales = game.framesIdle;
-                }
-
-                // 2. CALCULAR EL FRAME SEGÚN EL TIEMPO
-                // Usamos 8 FPS para que se vea fluido
-                int frameIndex = (int)(tiempoAnimacion * 8) % framesActuales.length;
-                TextureRegion regionADibujar = framesActuales[frameIndex];
-
-                // 3. DIBUJAR (Solo el trozo de 32x32)
-                game.batch.draw(regionADibujar, px, py, 32, 32);
-
-                // Dibujar nombre del jugador
-                if (game.skin != null && game.skin.getFont("font") != null) {
-                    game.skin.getFont("font").getData().setScale(0.4f);
-                    game.skin.getFont("font").draw(game.batch, p.getString("name"), px, py + 45);
-                }
-            }
-        }
         game.batch.end();
+
+        // 🟢 HUD
+        dibujarControlesTactiles();
 
         procesarEntrada();
     }
 
-    private void procesarEntrada() {
-        // Controles estándar de juego
-        String dir = "NONE";
-        if (Gdx.input.isKeyPressed(Input.Keys.LEFT) || Gdx.input.isKeyPressed(Input.Keys.A)) dir = "LEFT";
-        else if (Gdx.input.isKeyPressed(Input.Keys.RIGHT) || Gdx.input.isKeyPressed(Input.Keys.D)) dir = "RIGHT";
+    private void actualizarCamara(JsonValue players, float worldHeight) {
+        if (players == null) return;
 
-        boolean jump = Gdx.input.isKeyJustPressed(Input.Keys.UP) ||
-            Gdx.input.isKeyJustPressed(Input.Keys.W) ||
-            Gdx.input.isKeyJustPressed(Input.Keys.SPACE);
+        for (JsonValue p : players) {
+            if (p.getString("id", "").equals(game.playerId)) {
+                float tx = p.getFloat("x") + MAP_X + P_OFF_X;
+                float ty = worldHeight - (p.getFloat("y") + MAP_Y + P_OFF_Y) - 16f;
+
+                camera.position.set(tx, ty, 0);
+                camera.update();
+                break;
+            }
+        }
+    }
+
+    private void dibujarPuerta(float worldHeight) {
+        JsonValue doorData = ultimoEstado.get("door");
+
+        boolean open = false;
+        float doorX = 260f;
+        float doorY = 379f;
+        float doorClosedW = 54f;
+        float doorClosedH = 38f;
+        float doorOpenW = 64f;
+        float doorOpenH = 64f;
+
+        if (doorData != null) {
+            open = doorData.getBoolean("open", false);
+            doorX = doorData.getFloat("x", doorX);
+            doorY = doorData.getFloat("y", doorY);
+        }
+
+        float drawX = doorX + MAP_X + P_OFF_X;
+
+        if (open) {
+            float drawY = worldHeight - (doorY + MAP_Y + P_OFF_Y) - doorOpenH;
+            int frameIdx = (int) (tiempoAnimacion * 5) % game.doorOpenFrames.length;
+            game.batch.draw(game.doorOpenFrames[frameIdx], drawX, drawY, doorOpenW, doorOpenH);
+        } else {
+            float drawY = worldHeight - (doorY + MAP_Y + P_OFF_Y) - doorClosedH;
+            game.batch.draw(game.doorClosedFrame, drawX, drawY, doorClosedW, doorClosedH);
+        }
+    }
+
+    private void dibujarLlave(float worldHeight) {
+        JsonValue keyData = ultimoEstado.get("leafKey");
+
+        float keyX = 45f;
+        float keyY = 261f;
+        boolean picked = false;
+
+        if (keyData != null) {
+            keyX = keyData.getFloat("x", keyX);
+            keyY = keyData.getFloat("y", keyY);
+            picked = keyData.getBoolean("picked", false);
+        }
+
+        float kx = keyX + MAP_X + P_OFF_X;
+        float ky = worldHeight - (keyY + MAP_Y + P_OFF_Y) - 32f;
+
+        int frameIdx = (int) (tiempoAnimacion * 5) % game.leafKeyFrames.length;
+
+        game.batch.draw(game.leafKeyFrames[frameIdx], kx, ky, 32, 32);
+    }
+
+    private void dibujarJugadores(JsonValue players, float worldHeight) {
+        for (JsonValue p : players) {
+            float px = p.getFloat("x") + MAP_X + P_OFF_X;
+            float py = worldHeight - (p.getFloat("y") + MAP_Y + P_OFF_Y) - 32f;
+
+            TextureRegion[] frames = game.framesIdle;
+            int frameIndex = (int) (tiempoAnimacion * 8) % frames.length;
+
+            game.batch.draw(frames[frameIndex], px, py, 32, 32);
+        }
+    }
+
+    private void actualizarEstadoTactil() {
+        touchLeft = false;
+        touchRight = false;
+        touchJump = false;
+
+        float leftX = BTN_MARGIN;
+        float rightX = BTN_MARGIN + BTN_SIZE + 12f;
+        float buttonsY = BTN_MARGIN;
+        float jumpX = HUD_W - BTN_MARGIN - BTN_SIZE;
+
+        for (int i = 0; i < 5; i++) {
+            if (!Gdx.input.isTouched(i)) continue;
+
+            float sx = Gdx.input.getX(i);
+            float sy = Gdx.input.getY(i);
+
+            com.badlogic.gdx.math.Vector2 p = hudViewport.unproject(
+                new com.badlogic.gdx.math.Vector2(sx, sy)
+            );
+
+            if (estaDentro(p.x, p.y, leftX, buttonsY, BTN_SIZE, BTN_SIZE)) touchLeft = true;
+            if (estaDentro(p.x, p.y, rightX, buttonsY, BTN_SIZE, BTN_SIZE)) touchRight = true;
+            if (estaDentro(p.x, p.y, jumpX, buttonsY, BTN_SIZE, BTN_SIZE)) touchJump = true;
+        }
+    }
+
+    private boolean estaDentro(float px, float py, float x, float y, float w, float h) {
+        return px >= x && px <= x + w && py >= y && py <= y + h;
+    }
+
+    private void procesarEntrada() {
+        actualizarEstadoTactil();
+
+        String dir = "NONE";
+
+        if (touchLeft) dir = "LEFT";
+        else if (touchRight) dir = "RIGHT";
+
+        boolean jump = touchJump && !jumpWasPressed;
+        jumpWasPressed = touchJump;
 
         if (game.socket != null && game.socket.isOpen()) {
             if (!dir.equals(lastDir) || jump) {
-                game.socket.send("{\"type\":\"MOVE\", \"dir\":\"" + dir + "\", \"jump\":" + jump + "}");
+                String msg = "{\"type\":\"MOVE\",\"dir\":\"" + dir + "\",\"jump\":" + jump + "}";
+                game.socket.send(msg);
                 lastDir = dir;
             }
         }
     }
 
-    @Override public void resize(int width, int height) { viewport.update(width, height, false); }
+    private void dibujarControlesTactiles() {
+        hudViewport.apply();
+        shapeRenderer.setProjectionMatrix(hudCamera.combined);
+
+        float leftX = BTN_MARGIN;
+        float rightX = BTN_MARGIN + BTN_SIZE + 12f;
+        float y = BTN_MARGIN;
+        float jumpX = HUD_W - BTN_MARGIN - BTN_SIZE;
+
+        shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
+        shapeRenderer.setColor(0, 0, 0, 0.35f);
+        shapeRenderer.rect(leftX, y, BTN_SIZE, BTN_SIZE);
+        shapeRenderer.rect(rightX, y, BTN_SIZE, BTN_SIZE);
+        shapeRenderer.rect(jumpX, y, BTN_SIZE, BTN_SIZE);
+        shapeRenderer.end();
+
+        game.batch.setProjectionMatrix(hudCamera.combined);
+        game.batch.begin();
+        game.skin.getFont("font").draw(game.batch, "<", leftX + 15, y + 30);
+        game.skin.getFont("font").draw(game.batch, ">", rightX + 15, y + 30);
+        game.skin.getFont("font").draw(game.batch, "J", jumpX + 18, y + 30);
+        game.batch.end();
+
+        viewport.apply();
+    }
+
+    @Override
+    public void handleMessage(String message) {
+        try {
+            JsonValue json = lector.parse(message);
+            if (json.getString("type").equals("STATE")) ultimoEstado = json;
+        } catch (Exception ignored) {}
+    }
+
+    @Override
+    public void resize(int width, int height) {
+        viewport.update(width, height);
+        hudViewport.update(width, height);
+    }
+
     @Override public void show() {}
     @Override public void pause() {}
     @Override public void resume() {}
     @Override public void hide() {}
-    @Override public void dispose() {}
-
-    @Override public void handleMessage(String message) {
-        try {
-            JsonValue json = lector.parse(message);
-            if (json.getString("type").equals("STATE")) this.ultimoEstado = json;
-        } catch (Exception e) {}
+    @Override public void dispose() {
+        shapeRenderer.dispose();
     }
 }
