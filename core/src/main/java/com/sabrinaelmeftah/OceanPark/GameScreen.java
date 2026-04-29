@@ -22,6 +22,8 @@ public class GameScreen implements Screen {
     private JsonValue ultimoEstado;
     private float tiempoAnimacion = 0;
 
+    private boolean win = false;
+
     public GameScreen(Main game) {
         this.game = game;
         camera = new OrthographicCamera();
@@ -54,6 +56,16 @@ public class GameScreen implements Screen {
     public void render(float delta) {
         Gdx.gl.glClearColor(0.337f, 0.545f, 0.694f, 1);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
+
+        if (win) {
+            game.batch.setProjectionMatrix(viewport.getCamera().combined);
+            game.batch.begin();
+            game.font.getData().setScale(2f);
+            game.font.draw(game.batch, "HAS GANADO", 90, 100);
+            game.font.getData().setScale(1f);
+            game.batch.end();
+            return;
+        }
 
         if (ultimoEstado == null) return;
 
@@ -122,6 +134,11 @@ public class GameScreen implements Screen {
             JsonValue base = game.lector.parse(msg);
             if (base.getString("type").equals("STATE")) {
                 this.ultimoEstado = base;
+
+                JsonValue world = base.get("world");
+                if (world != null && world.getBoolean("allPlayersPassed", false)) {
+                    win = true;
+                }
             }
         } catch (Exception e) { }
     }
