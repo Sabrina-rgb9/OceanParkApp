@@ -2,117 +2,163 @@ package com.sabrinaelmeftah.OceanPark;
 
 import com.badlogic.gdx.Game;
 import com.badlogic.gdx.Gdx;
-import com.badlogic.gdx.graphics.g2d.BitmapFont;
+import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
-import com.badlogic.gdx.graphics.g2d.freetype.FreeTypeFontGenerator;
+import com.badlogic.gdx.graphics.g2d.TextureRegion;
+import com.badlogic.gdx.scenes.scene2d.ui.Skin;
 import com.badlogic.gdx.utils.Array;
-import com.badlogic.gdx.utils.JsonReader;
+
 import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.handshake.ServerHandshake;
-import com.badlogic.gdx.Screen;
-import com.sabrinaelmeftah.OceanPark.MenuScreen;
-import com.sabrinaelmeftah.OceanPark.GameScreen;
 
 import java.net.URI;
 
-public class Main extends Game {
-    public SpriteBatch batch;
-    public BitmapFont font;
-    public WebSocketClient socket;
-    public JsonReader lector;
+import com.sabrinaelmeftah.OceanPark.screens.*;
+import com.sabrinaelmeftah.OceanPark.gametools.LevelLoader;
 
-    // Datos del jugador que persistirán entre pantallas
+public class Main extends Game {
+
+    public SpriteBatch batch;
+    public Skin skin;
+    public WebSocketClient socket;
+
+    private final Array<String> messageQueue = new Array<>();
+
     public String playerId;
     public String playerName;
 
-    // Cola de mensajes para procesar en el hilo principal de renderizado
-    public final Array<String> queue = new Array<>();
+    // Animaciones del jugador
+    public TextureRegion[] framesIdle;
+    public TextureRegion[] framesLeft;
+    public TextureRegion[] framesRight;
+
+    // Mapa
+    public Texture tilesetTexture;
+    public int[][] tileMap;
+    public LevelLoader levelLoader;
+
+    // Llave
+    public TextureRegion[] leafKeyFrames;
+
+    // Puerta
+    public TextureRegion doorClosedFrame;
+    public TextureRegion[] doorOpenFrames;
 
     @Override
     public void create() {
         batch = new SpriteBatch();
-        lector = new JsonReader();
+        skin = new Skin(Gdx.files.internal("skin/neon-ui.json"));
 
-        // 1. CARGA DE FUENTE PIXEL (Para el título o textos personalizados)
-        // Asegúrate de que el archivo existe en assets/fonts/pixel.ttf
-        try {
-            FreeTypeFontGenerator generator = new FreeTypeFontGenerator(Gdx.files.internal("fonts/pixel.ttf"));
-            FreeTypeFontGenerator.FreeTypeFontParameter parameter = new FreeTypeFontGenerator.FreeTypeFontParameter();
-            parameter.size = 24;
-            font = generator.generateFont(parameter);
-            generator.dispose();
-        } catch (Exception e) {
-            Gdx.app.error("ERROR", "No se encontró la fuente en assets/fonts/pixel.ttf. Usando fuente por defecto.");
-            font = new BitmapFont(); // Fallback por si no encuentra el archivo
-        }
+        // Animaciones del jugador
+        framesIdle = cargarAnimacion("sprites/Mushroom Idle.png", 32, 32);
+        framesLeft = cargarAnimacion("sprites/Mushroom Left.png", 32, 32);
+        framesRight = cargarAnimacion("sprites/Mushroom Right.png", 32, 32);
 
-        // 2. CONEXIÓN AL SERVIDOR (WebSocket)
-        conectarServidor();
+        // Mapa
+        tilesetTexture = new Texture(Gdx.files.internal("map/tileset_cueva_2.png"));
+        tilesetTexture.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
 
-        // 3. INICIAR EN EL MENÚ
-        this.setScreen(new MenuScreen(this));
+        levelLoader = new LevelLoader();
+        levelLoader.load();
+        tileMap = levelLoader.tileMap;
+
+        // Llave animada: 2 frames de 32x32
+        Texture keyTex = new Texture(Gdx.files.internal("sprites/Leaf Key.png"));
+        keyTex.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
+
+        TextureRegion[][] keyTmp = TextureRegion.split(keyTex, 32, 32);
+        leafKeyFrames = new TextureRegion[]{ keyTmp[0][0], keyTmp[0][1] };
+
+        // Puerta cerrada: en tu JSON mide 54x38
+        Texture doorClosedTex = new Texture(Gdx.files.internal("sprites/Door Closed.png"));
+        doorClosedTex.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
+        doorClosedFrame = new TextureRegion(doorClosedTex, 0, 0, 54, 38);
+
+        // Puerta abierta: en tu JSON es spritesheet de 64x64 con 2 frames
+        Texture doorOpenTex = new Texture(Gdx.files.internal("sprites/Door Open.png"));
+        doorOpenTex.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
+
+        TextureRegion[][] doorOpenTmp = TextureRegion.split(doorOpenTex, 64, 64);
+        doorOpenFrames = new TextureRegion[]{ doorOpenTmp[0][0], doorOpenTmp[0][1] };
+
+        conectar();
+
+        this.setScreen(new MainMenu(this));
     }
 
-    private void conectarServidor() {
+    private TextureRegion[] cargarAnimacion(String path, int width, int height) {
+        Texture tex = new Texture(Gdx.files.internal(path));
+        tex.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
+
+        TextureRegion[][] tmp = TextureRegion.split(tex, width, height);
+
+        TextureRegion[] frames = new TextureRegion[tmp[0].length];
+        System.arraycopy(tmp[0], 0, frames, 0, tmp[0].length);
+
+        return frames;
+    }
+
+    private void conectar() {
         try {
-            // Sustituye por la IP y puerto de tu servidor
-            URI uri = new URI("wss://pico3.ieti.site");
+            // Para servidor público:
+            //URI uri = new URI("wss://pico3.ieti.site");
+            // Para probar localmente, usa esto:
+            URI uri = new URI("ws://localhost:3000");
+
             socket = new WebSocketClient(uri) {
                 @Override
-                public void onOpen(ServerHandshake handshakedata) {
-                    Gdx.app.log("NET", "Conectado a Pico3 con éxito");
+                public void onOpen(ServerHandshake handshake) {
+                    Gdx.app.log("WS", "Conectado con éxito");
                 }
 
-                // Dentro de tu WebSocketClient en Main.java
                 @Override
                 public void onMessage(String message) {
-                    // Añade este log para confirmar si el cable "trae datos"
-                    Gdx.app.log("WS_RAW", "Recibido del servidor: " + message);
-
-                    synchronized (queue) {
-                        queue.add(message);
+                    synchronized (messageQueue) {
+                        messageQueue.add(message);
                     }
                 }
 
                 @Override
                 public void onClose(int code, String reason, boolean remote) {
-                    Gdx.app.log("SOCKET", "Conexión cerrada: " + reason);
+                    Gdx.app.log("WS", "Conexión cerrada: " + reason);
                 }
 
                 @Override
                 public void onError(Exception ex) {
-                    Gdx.app.error("SOCKET", "Error en el socket: " + ex.getMessage());
+                    Gdx.app.error("WS", "Error en la conexión: " + ex.getMessage());
                 }
             };
+
             socket.connect();
+
         } catch (Exception e) {
-            Gdx.app.error("NET", "Error al conectar con pico3: " + e.getMessage());
+            Gdx.app.error("WS", "Error creando conexión: " + e.getMessage());
         }
     }
 
     @Override
     public void render() {
-        synchronized (queue) {
-            if (queue.size > 0) {
-                Screen current = getScreen(); // Obtenemos la pantalla actual
-                for (String msg : queue) {
-                    if (current instanceof MenuScreen) {
-                        // Casteamos a MenuScreen para acceder a su método msg
-                        ((MenuScreen) current).msg(msg);
-                    } else if (current instanceof GameScreen) {
-                        // Casteamos a GameScreen para acceder a su método msg
-                        ((GameScreen) current).msg(msg);
-                    }
+        synchronized (messageQueue) {
+            for (String message : messageQueue) {
+                if (getScreen() instanceof IScreen) {
+                    ((IScreen) getScreen()).handleMessage(message);
                 }
-                queue.clear();
             }
+
+            messageQueue.clear();
         }
+
         super.render();
     }
+
     @Override
     public void dispose() {
-        batch.dispose();
-        if (font != null) font.dispose();
-        if (socket != null) socket.close();
+        if (batch != null) batch.dispose();
+        if (skin != null) skin.dispose();
+        if (tilesetTexture != null) tilesetTexture.dispose();
+
+        if (socket != null) {
+            socket.close();
+        }
     }
 }
