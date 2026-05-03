@@ -8,10 +8,10 @@ import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.scenes.scene2d.ui.Skin;
 import com.badlogic.gdx.utils.Array;
 
-import org.java_websocket.client.WebSocketClient;
-import org.java_websocket.handshake.ServerHandshake;
-
-import java.net.URI;
+import com.github.czyzby.websocket.WebSocket;
+import com.github.czyzby.websocket.WebSocketHandler;
+import com.github.czyzby.websocket.WebSockets;
+import com.github.czyzby.websocket.data.WebSocketCloseCode;
 
 import com.sabrinaelmeftah.OceanPark.screens.*;
 import com.sabrinaelmeftah.OceanPark.gametools.LevelLoader;
@@ -20,7 +20,7 @@ public class Main extends Game {
 
     public SpriteBatch batch;
     public Skin skin;
-    public WebSocketClient socket;
+    public WebSocket socket;
 
     private final Array<String> messageQueue = new Array<>();
 
@@ -99,41 +99,36 @@ public class Main extends Game {
     }
 
     private void conectar() {
-        try {
-            // Para servidor público:
-            //URI uri = new URI("wss://pico3.ieti.site");
-            // Para probar localmente, usa esto:
-            URI uri = new URI("ws://localhost:3000");
+        // Para servidor público: "wss://pico3.ieti.site"
+        // Para probar localmente: "ws://localhost:3000"
+        socket = WebSockets.newSocket(WebSockets.toSecureWebSocketUrl("pico3.ieti.site", 443));
+        socket.addListener(new WebSocketHandler() {
+            @Override
+            public boolean onOpen(WebSocket webSocket) {
+                Gdx.app.log("WS", "Conectado con éxito");
+                return FULLY_HANDLED;
+            }
 
-            socket = new WebSocketClient(uri) {
-                @Override
-                public void onOpen(ServerHandshake handshake) {
-                    Gdx.app.log("WS", "Conectado con éxito");
+            @Override
+            public boolean onMessage(WebSocket webSocket, String message) {
+                synchronized (messageQueue) {
+                    messageQueue.add(message);
                 }
+                return FULLY_HANDLED;
+            }
 
-                @Override
-                public void onMessage(String message) {
-                    synchronized (messageQueue) {
-                        messageQueue.add(message);
-                    }
-                }
+            public boolean onClose(WebSocket webSocket, WebSocketCloseCode code) {
+                Gdx.app.log("WS", "Conexión cerrada: " + code);
+                return FULLY_HANDLED;
+            }
 
-                @Override
-                public void onClose(int code, String reason, boolean remote) {
-                    Gdx.app.log("WS", "Conexión cerrada: " + reason);
-                }
-
-                @Override
-                public void onError(Exception ex) {
-                    Gdx.app.error("WS", "Error en la conexión: " + ex.getMessage());
-                }
-            };
-
-            socket.connect();
-
-        } catch (Exception e) {
-            Gdx.app.error("WS", "Error creando conexión: " + e.getMessage());
-        }
+            @Override
+            public boolean onError(WebSocket webSocket, Throwable error) {
+                Gdx.app.error("WS", "Error en la conexión: " + error.getMessage());
+                return FULLY_HANDLED;
+            }
+        });
+        socket.connect();
     }
 
     @Override
@@ -158,7 +153,7 @@ public class Main extends Game {
         if (tilesetTexture != null) tilesetTexture.dispose();
 
         if (socket != null) {
-            socket.close();
+            WebSockets.closeGracefully(socket);
         }
     }
 }

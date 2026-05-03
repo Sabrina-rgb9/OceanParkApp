@@ -7,7 +7,7 @@ import com.badlogic.gdx.graphics.g2d.TextureRegion;
 public class LevelRenderer {
     public static void render(SpriteBatch batch, Texture tileset, int[][] map, float layerX, float layerY) {
         int tileSize = 23;
-        float worldHeight = map.length * tileSize; // Altura total (ej: 690)
+        float worldHeight = map.length * tileSize + layerY;
         int cols = tileset.getWidth() / tileSize;
         TextureRegion[][] regions = TextureRegion.split(tileset, tileSize, tileSize);
 
@@ -15,7 +15,6 @@ public class LevelRenderer {
             for (int col = 0; col < map[row].length; col++) {
                 int id = map[row][col];
                 if (id >= 0) {
-                    // FÓRMULA DE INVERSIÓN PROFESIONAL
                     float x = layerX + (col * tileSize);
                     float yDown = layerY + (row * tileSize);
                     float y = worldHeight - yDown - tileSize;

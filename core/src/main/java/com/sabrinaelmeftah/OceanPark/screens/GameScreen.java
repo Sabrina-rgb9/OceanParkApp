@@ -43,12 +43,9 @@ public class GameScreen implements Screen, IScreen {
     private boolean touchJump = false;
     private boolean jumpWasPressed = false;
 
-    private final float MAP_X = -295.0f;
+    private final float MAP_X = -75.0f;
     private final float MAP_Y = 673.0f;
     private final float ZOOM = 1.07f;
-
-    private final float P_OFF_X = 137.5f;
-    private final float P_OFF_Y = 195.5f;
 
     public GameScreen(Main game) {
         this.game = game;
@@ -79,14 +76,14 @@ public class GameScreen implements Screen, IScreen {
             return;
         }
 
-        float worldHeight = game.tileMap.length * 23f;
+        float worldHeight = game.tileMap.length * 23f + MAP_Y;
         tiempoAnimacion += delta;
 
         JsonValue players = ultimoEstado.get("players");
 
         actualizarCamara(players, worldHeight);
 
-        // 🔴 MUNDO
+        // MUNDO
         viewport.apply();
         game.batch.setProjectionMatrix(camera.combined);
 
@@ -99,7 +96,7 @@ public class GameScreen implements Screen, IScreen {
 
         game.batch.end();
 
-        // 🟢 HUD
+        // HUD
         dibujarControlesTactiles();
 
         procesarEntrada();
@@ -110,8 +107,8 @@ public class GameScreen implements Screen, IScreen {
 
         for (JsonValue p : players) {
             if (p.getString("id", "").equals(game.playerId)) {
-                float tx = p.getFloat("x") + MAP_X + P_OFF_X;
-                float ty = worldHeight - (p.getFloat("y") + MAP_Y + P_OFF_Y) - 16f;
+                float tx = p.getFloat("x");
+                float ty = worldHeight - p.getFloat("y") - 16f;
 
                 camera.position.set(tx, ty, 0);
                 camera.update();
@@ -137,14 +134,14 @@ public class GameScreen implements Screen, IScreen {
             doorY = doorData.getFloat("y", doorY);
         }
 
-        float drawX = doorX + MAP_X + P_OFF_X;
+        float drawX = doorX;
 
         if (open) {
-            float drawY = worldHeight - (doorY + MAP_Y + P_OFF_Y) - doorOpenH;
+            float drawY = worldHeight - doorY - 72f - doorOpenH;
             int frameIdx = (int) (tiempoAnimacion * 5) % game.doorOpenFrames.length;
             game.batch.draw(game.doorOpenFrames[frameIdx], drawX, drawY, doorOpenW, doorOpenH);
         } else {
-            float drawY = worldHeight - (doorY + MAP_Y + P_OFF_Y) - doorClosedH;
+            float drawY = worldHeight - doorY - 72f - doorClosedH;
             game.batch.draw(game.doorClosedFrame, drawX, drawY, doorClosedW, doorClosedH);
         }
     }
@@ -162,8 +159,8 @@ public class GameScreen implements Screen, IScreen {
             picked = keyData.getBoolean("picked", false);
         }
 
-        float kx = keyX + MAP_X + P_OFF_X;
-        float ky = worldHeight - (keyY + MAP_Y + P_OFF_Y) - 32f;
+        float kx = keyX;
+        float ky = worldHeight - keyY - 32f;
 
         int frameIdx = (int) (tiempoAnimacion * 5) % game.leafKeyFrames.length;
 
@@ -174,8 +171,8 @@ public class GameScreen implements Screen, IScreen {
         if (players == null) return;
 
         for (JsonValue p : players) {
-            float px = p.getFloat("x") + MAP_X + P_OFF_X;
-            float py = worldHeight - (p.getFloat("y") + MAP_Y + P_OFF_Y) - 32f;
+            float px = p.getFloat("x");
+            float py = worldHeight - p.getFloat("y") - 32f;
 
             TextureRegion[] frames = obtenerFramesJugador(p);
 

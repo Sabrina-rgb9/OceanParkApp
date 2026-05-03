@@ -2,11 +2,14 @@ package com.sabrinaelmeftah.OceanPark.screens;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Screen;
+import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
+import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.scenes.scene2d.ui.Label;
+import com.badlogic.gdx.scenes.scene2d.ui.ScrollPane;
 import com.badlogic.gdx.scenes.scene2d.ui.Table;
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
 import com.badlogic.gdx.scenes.scene2d.ui.TextField;
@@ -27,12 +30,19 @@ public class MainMenu implements Screen, IScreen {
     private FitViewport mapViewport;
 
     private Label labelInfo;
-    private Label labelPlayers;
+    private Table playersListTable;
 
     private final JsonReader lector = new JsonReader();
 
     private final float MAP_X = -295.0f;
     private final float MAP_Y = 673.0f;
+
+    private static final Color[] PLAYER_COLORS = {
+        new Color(0f, 1f, 1f, 1f),
+        new Color(1f, 0.4f, 0.8f, 1f),
+        new Color(0.4f, 1f, 0.4f, 1f),
+        new Color(1f, 0.8f, 0.2f, 1f),
+    };
 
     public MainMenu(final Main game) {
         this.game = game;
@@ -43,32 +53,54 @@ public class MainMenu implements Screen, IScreen {
         mapCamera.zoom = 1.07f;
         mapCamera.update();
 
-        stage = new Stage(new FitViewport(1280, 720), game.batch);
+        stage = new Stage(new FitViewport(800, 480), game.batch);
 
         Table root = new Table();
         root.setFillParent(true);
         root.pad(40);
         stage.addActor(root);
 
+        // --- Panel izquierdo: formulario ---
         Table menuTable = new Table();
-        Table playersTable = new Table();
 
-        Label title = new Label("OCEAN PARK", game.skin);
+        Label title = new Label("OCEAN PARK", game.skin, "over");
+        title.setColor(0f, 1f, 1f, 1f);
+
+        Label subtitle = new Label("Introduce tu nombre para jugar", game.skin);
+        subtitle.setColor(0.6f, 0.9f, 0.9f, 1f);
+
         final TextField nombreInput = new TextField("", game.skin);
-        TextButton btnJugar = new TextButton("Entrar", game.skin);
+        nombreInput.setMessageText("Nombre del jugador...");
 
+        TextButton btnJugar = new TextButton("▶  ENTRAR AL JUEGO", game.skin);
         labelInfo = new Label("", game.skin);
-        labelPlayers = new Label("Jugadores conectados:\n\nNadie conectado", game.skin);
+        labelInfo.setColor(1f, 0.4f, 0.4f, 1f);
 
-        menuTable.add(title).padBottom(20).row();
-        menuTable.add(nombreInput).width(260).height(50).padBottom(20).row();
-        menuTable.add(btnJugar).width(260).height(55).padBottom(20).row();
-        menuTable.add(labelInfo);
+        menuTable.add(title).padBottom(6).row();
+        menuTable.add(subtitle).padBottom(30).row();
+        menuTable.add(nombreInput).width(380).height(50).padBottom(14).row();
+        menuTable.add(btnJugar).width(380).height(54).padBottom(10).row();
+        menuTable.add(labelInfo).row();
 
-        playersTable.add(labelPlayers).top().left().pad(20);
+        // --- Panel derecho: lista de jugadores ---
+        Table playersPanel = new Table();
 
-        root.add(menuTable).expand().center();
-        root.add(playersTable).width(340).height(500).right().top();
+        Label playersTitle = new Label("EN LINEA", game.skin, "over");
+        playersTitle.setColor(0f, 1f, 1f, 1f);
+
+        playersListTable = new Table();
+        playersListTable.top().left();
+
+        ScrollPane scroll = new ScrollPane(playersListTable, game.skin);
+        scroll.setFadeScrollBars(false);
+
+        playersPanel.add(playersTitle).padBottom(14).row();
+        playersPanel.add(scroll).width(200).height(300).top();
+
+        actualizarListaJugadores(null);
+
+        root.add(menuTable).expand().center().padRight(40);
+        root.add(playersPanel).width(220).top().padTop(30);
 
         btnJugar.addListener(new ClickListener() {
             @Override
@@ -78,12 +110,10 @@ public class MainMenu implements Screen, IScreen {
                 if (!nombre.isEmpty() && game.socket != null && game.socket.isOpen()) {
                     String nombreSeguro = nombre.replace("\"", "\\\"");
                     String msg = "{\"type\":\"JOIN\", \"name\":\"" + nombreSeguro + "\"}";
-
                     game.socket.send(msg);
-                    labelInfo.setText("Conectando con el servidor...");
-
+                    labelInfo.setText("");
                 } else if (game.socket == null || !game.socket.isOpen()) {
-                    labelInfo.setText("Error: Sin conexión al servidor.");
+                    labelInfo.setText("Sin conexión al servidor.");
                 } else {
                     labelInfo.setText("Introduce un nombre.");
                 }
@@ -118,21 +148,34 @@ public class MainMenu implements Screen, IScreen {
     }
 
     private void actualizarListaJugadores(JsonValue players) {
+        playersListTable.clear();
+
         if (players == null || players.size == 0) {
-            labelPlayers.setText("Jugadores conectados:\n\nNadie conectado");
+            Label empty = new Label("Nadie conectado aun", game.skin);
+            empty.setColor(0.5f, 0.5f, 0.5f, 1f);
+            playersListTable.add(empty).padTop(12).row();
             return;
         }
 
-        StringBuilder sb = new StringBuilder();
-        sb.append("Jugadores conectados:\n\n");
-
+        int i = 0;
         for (JsonValue p : players) {
-            sb.append("- ")
-                .append(p.getString("name", "Jugador"))
-                .append("\n");
-        }
+            String nombre = p.getString("name", "Jugador");
+            Color color = PLAYER_COLORS[i % PLAYER_COLORS.length];
 
-        labelPlayers.setText(sb.toString());
+            Table row = new Table();
+
+            Label dot = new Label("●", game.skin);
+            dot.setColor(color);
+
+            Label nameLabel = new Label(nombre, game.skin);
+            nameLabel.setColor(color);
+
+            row.add(dot).padRight(10);
+            row.add(nameLabel).left();
+
+            playersListTable.add(row).left().padBottom(10).row();
+            i++;
+        }
     }
 
     @Override
@@ -185,3 +228,4 @@ public class MainMenu implements Screen, IScreen {
         stage.dispose();
     }
 }
+
