@@ -29,7 +29,8 @@ public class LevelLoader {
         try {
             int levelIndex = level - 1;
             String levelName = String.format("%03d", levelIndex);
-            JsonValue mapData = reader.parse(Gdx.files.internal("tilemaps/level_" + levelName + "_layer_000.json"));            JsonValue mapArray = mapData.get("tileMap");
+            JsonValue mapData = reader.parse(Gdx.files.internal("tilemaps/level_" + levelName + "_layer_000.json"));
+            JsonValue mapArray = mapData.get("tileMap");
             tileMap = new int[mapArray.size][mapArray.get(0).size];
 
             for (int r = 0; r < mapArray.size; r++) {

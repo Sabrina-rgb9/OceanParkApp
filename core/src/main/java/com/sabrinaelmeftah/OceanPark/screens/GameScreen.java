@@ -92,6 +92,7 @@ public class GameScreen implements Screen, IScreen {
         LevelRenderer.render(game.batch, game.tilesetTexture, game.tileMap, MAP_X, MAP_Y);
         dibujarPuerta(worldHeight);
         dibujarLlave(worldHeight);
+        dibujarBoton(worldHeight);
         dibujarJugadores(players, worldHeight);
 
         game.batch.end();
@@ -165,6 +166,28 @@ public class GameScreen implements Screen, IScreen {
         int frameIdx = (int) (tiempoAnimacion * 5) % game.leafKeyFrames.length;
 
         game.batch.draw(game.leafKeyFrames[frameIdx], kx, ky, 32, 32);
+    }
+
+    private void dibujarBoton(float worldHeight) {
+        JsonValue buttonData = ultimoEstado.get("button");
+        if (buttonData == null) return;
+
+        float buttonX = buttonData.getFloat("x");
+        float buttonY = buttonData.getFloat("y");
+        float buttonW = buttonData.getFloat("width", 20f);
+        float buttonH = buttonData.getFloat("height", 22f);
+        boolean pressed = buttonData.getBoolean("pressed", false);
+
+        float drawX = buttonX;
+        float drawY = worldHeight - buttonY - buttonH;
+
+        if (pressed) {
+            game.batch.setColor(0.6f, 0.6f, 0.6f, 1f);
+        }
+
+        game.batch.draw(game.buttonFrame, drawX, drawY, buttonW, buttonH);
+
+        game.batch.setColor(1f, 1f, 1f, 1f);
     }
 
     private void dibujarJugadores(JsonValue players, float worldHeight) {

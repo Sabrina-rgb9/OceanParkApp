@@ -47,6 +47,8 @@ public class Main extends Game {
     public TextureRegion doorClosedFrame;
     public TextureRegion[] doorOpenFrames;
 
+    public TextureRegion buttonFrame;
+
     @Override
     public void create() {
         batch = new SpriteBatch();
@@ -84,6 +86,10 @@ public class Main extends Game {
 
         TextureRegion[][] doorOpenTmp = TextureRegion.split(doorOpenTex, 64, 64);
         doorOpenFrames = new TextureRegion[]{ doorOpenTmp[0][0], doorOpenTmp[0][1] };
+
+        Texture buttonTex = new Texture(Gdx.files.internal("sprites/Button.png"));
+        buttonTex.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
+        buttonFrame = new TextureRegion(buttonTex, 0, 0, 20, 22);
 
         conectar();
 
