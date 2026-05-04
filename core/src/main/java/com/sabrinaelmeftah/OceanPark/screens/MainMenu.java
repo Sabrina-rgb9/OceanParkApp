@@ -14,6 +14,7 @@ import com.badlogic.gdx.scenes.scene2d.ui.Table;
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
 import com.badlogic.gdx.scenes.scene2d.ui.TextField;
 import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
+import com.badlogic.gdx.scenes.scene2d.utils.Drawable;
 import com.badlogic.gdx.utils.JsonReader;
 import com.badlogic.gdx.utils.JsonValue;
 import com.badlogic.gdx.utils.viewport.FitViewport;
@@ -62,6 +63,7 @@ public class MainMenu implements Screen, IScreen {
         Table root = new Table();
         root.setFillParent(true);
         root.pad(40);
+        root.setBackground((Drawable) null);
         stage.addActor(root);
 
         // --- Panel izquierdo: formulario ---
@@ -97,6 +99,10 @@ public class MainMenu implements Screen, IScreen {
 
         ScrollPane scroll = new ScrollPane(playersListTable, game.skin);
         scroll.setFadeScrollBars(false);
+
+        ScrollPane.ScrollPaneStyle scrollStyle = new ScrollPane.ScrollPaneStyle(scroll.getStyle());
+        scrollStyle.background = null;
+        scroll.setStyle(scrollStyle);
 
         playersPanel.add(playersTitle).padBottom(14).row();
         playersPanel.add(scroll).width(200).height(300).top();
@@ -200,6 +206,8 @@ public class MainMenu implements Screen, IScreen {
         game.batch.setProjectionMatrix(mapCamera.combined);
 
         game.batch.begin();
+
+        game.batch.setColor(1f, 1f, 1f, 1f);
 
         LevelRenderer.render(
             game.batch,

@@ -170,10 +170,13 @@ public class GameScreen implements Screen, IScreen {
 
     private void dibujarBoton(float worldHeight) {
         JsonValue buttonData = ultimoEstado.get("button");
+
+        Gdx.app.log("DEBUG", "Button: " + buttonData);
+
         if (buttonData == null) return;
 
-        float buttonX = buttonData.getFloat("x");
-        float buttonY = buttonData.getFloat("y");
+        float buttonX = buttonData.getFloat("x", 342f);
+        float buttonY = buttonData.getFloat("y", 194f + MAP_Y);
         float buttonW = buttonData.getFloat("width", 20f);
         float buttonH = buttonData.getFloat("height", 22f);
         boolean pressed = buttonData.getBoolean("pressed", false);
@@ -186,7 +189,6 @@ public class GameScreen implements Screen, IScreen {
         }
 
         game.batch.draw(game.buttonFrame, drawX, drawY, buttonW, buttonH);
-
         game.batch.setColor(1f, 1f, 1f, 1f);
     }
 
