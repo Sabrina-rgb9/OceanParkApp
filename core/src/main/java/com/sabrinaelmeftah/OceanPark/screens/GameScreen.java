@@ -100,6 +100,7 @@ public class GameScreen implements Screen, IScreen {
 
         // HUD
         dibujarControlesTactiles();
+        dibujarMensajeNivelCompletado();
 
         procesarEntrada();
     }
@@ -238,6 +239,76 @@ public class GameScreen implements Screen, IScreen {
 
             game.batch.draw(frames[frameIndex], px, py, 32, 32);
         }
+    }
+
+    private void dibujarMensajeNivelCompletado() {
+        if (ultimoEstado == null) return;
+
+        int level = ultimoEstado.getInt("level", 1);
+        if (level != 2) return;
+
+        JsonValue players = ultimoEstado.get("players");
+        if (players == null || players.size == 0) return;
+
+        boolean todosHanTerminado = true;
+
+        for (JsonValue p : players) {
+            if (!p.getBoolean("hasFinishedLevel", false)) {
+                todosHanTerminado = false;
+                break;
+            }
+        }
+
+        if (!todosHanTerminado) return;
+
+        hudViewport.apply();
+
+        float boxW = 360f;
+        float boxH = 90f;
+        float boxX = (HUD_W - boxW) / 2f;
+        float boxY = (HUD_H - boxH) / 2f;
+
+        shapeRenderer.setProjectionMatrix(hudCamera.combined);
+
+        Gdx.gl.glEnable(GL20.GL_BLEND);
+
+        shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
+        shapeRenderer.setColor(0f, 0f, 0f, 0.65f);
+        shapeRenderer.rect(boxX, boxY, boxW, boxH);
+        shapeRenderer.end();
+
+        shapeRenderer.begin(ShapeRenderer.ShapeType.Line);
+        shapeRenderer.setColor(0f, 1f, 1f, 1f);
+        shapeRenderer.rect(boxX, boxY, boxW, boxH);
+        shapeRenderer.end();
+
+        Gdx.gl.glDisable(GL20.GL_BLEND);
+
+        game.batch.setProjectionMatrix(hudCamera.combined);
+        game.batch.begin();
+
+        game.skin.getFont("font").getData().setScale(2.1f);
+        game.skin.getFont("font").setColor(0f, 1f, 1f, 1f);
+        game.skin.getFont("font").draw(
+            game.batch,
+            "NIVEL COMPLETADO",
+            boxX + 45f,
+            boxY + 58f
+        );
+
+        game.skin.getFont("font").getData().setScale(1f);
+        game.skin.getFont("font").setColor(1f, 1f, 1f, 1f);
+        game.skin.getFont("font").draw(
+            game.batch,
+            "¡Buen trabajo!",
+            boxX + 130f,
+            boxY + 28f
+        );
+
+        game.skin.getFont("font").setColor(1f, 1f, 1f, 1f);
+        game.batch.end();
+
+        viewport.apply();
     }
 
     private TextureRegion[] obtenerFramesJugador(JsonValue p) {
