@@ -47,6 +47,10 @@ public class MainMenu implements Screen, IScreen {
     public MainMenu(final Main game) {
         this.game = game;
 
+        game.currentLevel = 1;
+        game.levelLoader.load(1);
+        game.tileMap = game.levelLoader.tileMap;
+
         mapCamera = new OrthographicCamera();
         mapViewport = new FitViewport(480, 270, mapCamera);
         mapCamera.position.set(240, 135, 0);
