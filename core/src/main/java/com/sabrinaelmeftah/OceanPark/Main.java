@@ -27,6 +27,9 @@ public class Main extends Game {
     public String playerId;
     public String playerName;
 
+    // nivel 2
+    public int currentLevel = 1;
+
     // Animaciones del jugador
     public TextureRegion[] framesIdle;
     public TextureRegion[] framesLeft;
@@ -59,7 +62,8 @@ public class Main extends Game {
         tilesetTexture.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
 
         levelLoader = new LevelLoader();
-        levelLoader.load();
+        // leemos el nivel
+        levelLoader.load(1);
         tileMap = levelLoader.tileMap;
 
         // Llave animada: 2 frames de 32x32

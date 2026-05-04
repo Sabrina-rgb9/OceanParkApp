@@ -279,8 +279,18 @@ public class GameScreen implements Screen, IScreen {
     public void handleMessage(String message) {
         try {
             JsonValue json = lector.parse(message);
-            if (json.getString("type").equals("STATE")) ultimoEstado = json;
-        } catch (Exception ignored) {}
+            if (json.getString("type").equals("STATE")) {
+                int level = json.getInt("level", 1);
+
+                if (game.currentLevel != level) {
+                    game.currentLevel = level;
+                    game.levelLoader.load(level);
+                    game.tileMap = game.levelLoader.tileMap;
+                    ultimoEstado = null;
+                }
+
+                ultimoEstado = json;
+            }        } catch (Exception ignored) {}
     }
 
     @Override
