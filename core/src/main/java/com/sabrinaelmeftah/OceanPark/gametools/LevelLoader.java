@@ -35,7 +35,15 @@ public class LevelLoader {
 
             for (int r = 0; r < mapArray.size; r++) {
                 for (int c = 0; c < mapArray.get(r).size; c++) {
-                    tileMap[r][c] = mapArray.get(r).getInt(c);
+                    //tileMap[r][c] = mapArray.get(r).getInt(c);
+
+                    int tileId = mapArray.get(r).getInt(c);
+
+                    if (level == 2 && tileId == 145) {
+                        tileMap[r][c] = 0; // o el ID del tile de fondo
+                    } else {
+                        tileMap[r][c] = tileId;
+                    }
                 }
             }
         } catch (Exception e) {

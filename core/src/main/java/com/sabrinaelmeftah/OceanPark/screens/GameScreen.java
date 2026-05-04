@@ -93,6 +93,7 @@ public class GameScreen implements Screen, IScreen {
         dibujarPuerta(worldHeight);
         dibujarLlave(worldHeight);
         dibujarBoton(worldHeight);
+        dibujarPlataformasMoviles(worldHeight);
         dibujarJugadores(players, worldHeight);
 
         game.batch.end();
@@ -171,8 +172,6 @@ public class GameScreen implements Screen, IScreen {
     private void dibujarBoton(float worldHeight) {
         JsonValue buttonData = ultimoEstado.get("button");
 
-        Gdx.app.log("DEBUG", "Button: " + buttonData);
-
         if (buttonData == null) return;
 
         float buttonX = buttonData.getFloat("x", 342f);
@@ -190,6 +189,38 @@ public class GameScreen implements Screen, IScreen {
 
         game.batch.draw(game.buttonFrame, drawX, drawY, buttonW, buttonH);
         game.batch.setColor(1f, 1f, 1f, 1f);
+    }
+
+    private void dibujarPlataformasMoviles(float worldHeight) {
+        JsonValue platforms = ultimoEstado.get("movingPlatforms");
+        if (platforms == null) return;
+
+        int tileSize = 23;
+        int cols = game.tilesetTexture.getWidth() / tileSize;
+        TextureRegion[][] regions = TextureRegion.split(game.tilesetTexture, tileSize, tileSize);
+
+        for (JsonValue p : platforms) {
+            float x = p.getFloat("x");
+            float y = worldHeight - p.getFloat("y") - p.getFloat("height", tileSize);
+            float w = p.getFloat("width", tileSize);
+            float h = p.getFloat("height", tileSize);
+
+            int tileId = p.getInt("tileId", 145);
+
+            TextureRegion tile = regions[tileId / cols][tileId % cols];
+
+            int tileCount = Math.round(w / tileSize);
+
+            for (int i = 0; i < tileCount; i++) {
+                game.batch.draw(
+                    tile,
+                    x + i * tileSize,
+                    y,
+                    tileSize,
+                    h
+                );
+            }
+        }
     }
 
     private void dibujarJugadores(JsonValue players, float worldHeight) {
