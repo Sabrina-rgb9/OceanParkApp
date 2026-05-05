@@ -211,7 +211,7 @@ public class MainMenu implements Screen, IScreen {
 
         LevelRenderer.render(
             game.batch,
-            game.tilesetTexture,
+            game.tilesetRegions,
             game.tileMap,
             MAP_X,
             MAP_Y

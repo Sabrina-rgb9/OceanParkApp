@@ -54,6 +54,8 @@ public class Main extends Game {
 
     public TextureRegion buttonFrame;
 
+    public TextureRegion[][] tilesetRegions;
+
     @Override
     public void create() {
         batch = new SpriteBatch();
@@ -85,6 +87,8 @@ public class Main extends Game {
         // Mapa
         tilesetTexture = new Texture(Gdx.files.internal("map/tileset_cueva_2.png"));
         tilesetTexture.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
+        tilesetRegions = TextureRegion.split(tilesetTexture, 23, 23);
+
 
         levelLoader = new LevelLoader();
         // leemos el nivel

@@ -98,7 +98,7 @@ public class GameScreen implements Screen, IScreen {
 
         game.batch.begin();
 
-        LevelRenderer.render(game.batch, game.tilesetTexture, game.tileMap, MAP_X, MAP_Y);
+        LevelRenderer.render(game.batch, game.tilesetRegions, game.tileMap, MAP_X, MAP_Y);
         dibujarPuerta(worldHeight);
         dibujarLlave(worldHeight);
         dibujarBoton(worldHeight);
@@ -212,7 +212,7 @@ public class GameScreen implements Screen, IScreen {
 
         int tileSize = 23;
         int cols = game.tilesetTexture.getWidth() / tileSize;
-        TextureRegion[][] regions = TextureRegion.split(game.tilesetTexture, tileSize, tileSize);
+        TextureRegion[][] regions = game.tilesetRegions;
 
         for (JsonValue p : platforms) {
             float x = p.getFloat("x");
