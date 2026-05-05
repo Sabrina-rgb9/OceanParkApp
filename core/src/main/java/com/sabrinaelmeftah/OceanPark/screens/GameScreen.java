@@ -12,6 +12,8 @@ import com.badlogic.gdx.utils.JsonValue;
 import com.badlogic.gdx.utils.viewport.FitViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
 
+import com.badlogic.gdx.graphics.Color;
+
 import com.sabrinaelmeftah.OceanPark.Main;
 import com.sabrinaelmeftah.OceanPark.gametools.LevelRenderer;
 
@@ -37,6 +39,13 @@ public class GameScreen implements Screen, IScreen {
     private static final float HUD_H = 270f;
     private static final float BTN_SIZE = 48f;
     private static final float BTN_MARGIN = 18f;
+
+    private static final Color[] PLAYER_COLORS = {
+        new Color(1f, 1f, 1f, 1f),
+        new Color(0.6f, 1f, 1f, 1f),
+        new Color(1f, 0.6f, 0.9f, 1f),
+        new Color(0.7f, 1f, 0.6f, 1f)
+    };
 
     private boolean touchLeft = false;
     private boolean touchRight = false;
@@ -139,12 +148,17 @@ public class GameScreen implements Screen, IScreen {
 
         float drawX = doorX;
 
+        // Misma base para puerta cerrada y abierta
+        float baseY = worldHeight - doorY - 72f;
+
         if (open) {
-            float drawY = worldHeight - doorY - 72f - doorOpenH;
+            float drawY = baseY - doorClosedH - 3f; // usar altura de la cerrada como referencia
+            float drawXOpen = drawX - 5f;      // opcional: centrar un poco
+
             int frameIdx = (int) (tiempoAnimacion * 5) % game.doorOpenFrames.length;
-            game.batch.draw(game.doorOpenFrames[frameIdx], drawX, drawY, doorOpenW, doorOpenH);
+            game.batch.draw(game.doorOpenFrames[frameIdx], drawXOpen, drawY, doorOpenW, doorOpenH);
         } else {
-            float drawY = worldHeight - doorY - 72f - doorClosedH;
+            float drawY = baseY - doorClosedH;
             game.batch.draw(game.doorClosedFrame, drawX, drawY, doorClosedW, doorClosedH);
         }
     }
@@ -227,17 +241,25 @@ public class GameScreen implements Screen, IScreen {
     private void dibujarJugadores(JsonValue players, float worldHeight) {
         if (players == null) return;
 
+        int i = 0;
+
         for (JsonValue p : players) {
             float px = p.getFloat("x");
             float py = worldHeight - p.getFloat("y") - 32f;
 
             TextureRegion[] frames = obtenerFramesJugador(p);
-
             if (frames == null || frames.length == 0) continue;
 
             int frameIndex = (int) (tiempoAnimacion * 8) % frames.length;
 
+            Color color = PLAYER_COLORS[i % PLAYER_COLORS.length];
+            game.batch.setColor(color);
+
             game.batch.draw(frames[frameIndex], px, py, 32, 32);
+
+            game.batch.setColor(1f, 1f, 1f, 1f);
+
+            i++;
         }
     }
 

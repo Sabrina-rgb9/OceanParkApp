@@ -16,6 +16,11 @@ import com.github.czyzby.websocket.data.WebSocketCloseCode;
 import com.sabrinaelmeftah.OceanPark.screens.*;
 import com.sabrinaelmeftah.OceanPark.gametools.LevelLoader;
 
+import com.badlogic.gdx.graphics.g2d.BitmapFont;
+import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.graphics.g2d.freetype.FreeTypeFontGenerator;
+
+
 public class Main extends Game {
 
     public SpriteBatch batch;
@@ -53,6 +58,24 @@ public class Main extends Game {
     public void create() {
         batch = new SpriteBatch();
         skin = new Skin(Gdx.files.internal("skin/neon-ui.json"));
+        FreeTypeFontGenerator generator =
+                new FreeTypeFontGenerator(Gdx.files.internal("fonts/pixel.ttf"));
+
+            FreeTypeFontGenerator.FreeTypeFontParameter parameter =
+                new FreeTypeFontGenerator.FreeTypeFontParameter();
+
+            parameter.size = 9;
+
+        // IMPORTANTE para pixel art
+            parameter.minFilter = Texture.TextureFilter.Nearest;
+            parameter.magFilter = Texture.TextureFilter.Nearest;
+
+            BitmapFont pixelFont = generator.generateFont(parameter);
+            generator.dispose();
+
+        // Sobrescribimos la fuente del skin
+            skin.add("font", pixelFont, BitmapFont.class);
+            skin.add("over", pixelFont, BitmapFont.class);
 
         // Animaciones del jugador
         framesIdle = cargarAnimacion("sprites/Mushroom Idle.png", 32, 32);
